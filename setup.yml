@@ -124,6 +124,7 @@
     - custom/matrix-static-files
     - custom/matrix-coturn
     - custom/matrix-media-repo
+    - custom/matrix-bridge-appservice-polychat
     - custom/matrix-pantalaimon
 
     - role: galaxy/auxiliary
