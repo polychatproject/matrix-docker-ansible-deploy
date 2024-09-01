@@ -84,6 +84,8 @@ matrix_homeserver_container_extra_arguments_auto: |
     +
     (['--mount type=bind,src=' + matrix_appservice_draupnir_for_all_config_path + '/draupnir-for-all-registration.yaml,dst=/matrix-appservice-draupnir-for-all-registration.yaml,ro'] if matrix_appservice_draupnir_for_all_enabled else [])
     +
+    (['--mount type=bind,src=' + matrix_appservice_double_puppet_config_path + '/registration.yaml,dst=/matrix-appservice-double-puppet-registration.yaml,ro'] if matrix_appservice_double_puppet_enabled else [])
+    +
     (['--mount type=bind,src=' + matrix_appservice_irc_config_path + '/registration.yaml,dst=/matrix-appservice-irc-registration.yaml,ro'] if matrix_appservice_irc_enabled else [])
     +
     (['--mount type=bind,src=' + matrix_appservice_kakaotalk_config_path + '/registration.yaml,dst=/matrix-appservice-kakaotalk-registration.yaml,ro'] if matrix_appservice_kakaotalk_enabled else [])
@@ -156,6 +158,8 @@ matrix_homeserver_app_service_config_files_auto: |
     (['/matrix-appservice-discord-registration.yaml'] if matrix_appservice_discord_enabled else [])
     +
     (['/matrix-appservice-draupnir-for-all-registration.yaml'] if matrix_appservice_draupnir_for_all_enabled else [])
+    +
+    (['/matrix-appservice-double-puppet-registration.yaml'] if matrix_appservice_double_puppet_enabled else [])
     +
     (['/matrix-appservice-irc-registration.yaml'] if matrix_appservice_irc_enabled else [])
     +
@@ -446,6 +450,8 @@ devture_systemd_service_manager_services_list_auto: |
     ([{'name': 'matrix-synapse-auto-compressor.timer', 'priority': 5000, 'groups': ['matrix', 'synapse-auto-compressor']}] if matrix_synapse_auto_compressor_enabled else [])
     +
     ([{'name': 'matrix-synapse-admin.service', 'priority': 4000, 'groups': ['matrix', 'synapse-admin']}] if matrix_synapse_admin_enabled else [])
+    +
+    ([{'name': (matrix_synapse_usage_exporter_identifier + '.service'), 'priority': 4000, 'groups': ['matrix', 'synapse-usage-exporter']}] if matrix_synapse_usage_exporter_enabled else [])
     +
     ([{'name': 'matrix-synapse-reverse-proxy-companion.service', 'priority': 1500, 'groups': ['matrix', 'homeservers', 'synapse', 'synapse-reverse-proxy-companion', 'reverse-proxies']}] if matrix_synapse_reverse_proxy_companion_enabled else [])
     +
@@ -954,7 +960,16 @@ matrix_beeper_linkedin_appservice_token: "{{ '%s' | format(matrix_homeserver_gen
 matrix_beeper_linkedin_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_beeper_linkedin_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'linked.hs.token', rounds=655555) | to_uuid }}"
 
-matrix_beeper_linkedin_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_beeper_linkedin_login_shared_secret: |-
+  {{
+    ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    if matrix_appservice_double_puppet_enabled
+    else (
+      matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else ""
+    )
+  }}
 
 matrix_beeper_linkedin_bridge_presence: "{{ matrix_synapse_presence_enabled if matrix_synapse_enabled else true }}"
 
@@ -1051,7 +1066,18 @@ matrix_mautrix_discord_homeserver_address: "{{ matrix_addons_homeserver_client_a
 matrix_mautrix_discord_homeserver_public_address: "{{ 'https' if matrix_playbook_ssl_enabled else 'http' }}://{{ matrix_server_fqn_matrix }}"
 matrix_mautrix_discord_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'maudisc.hs.tok', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_discord_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_discord_bridge_login_shared_secret_map_auto: |-
+  {{
+    ({
+      matrix_mautrix_discord_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    })
+    if matrix_appservice_double_puppet_enabled
+    else (
+      {matrix_mautrix_discord_homeserver_domain: matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret}
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else {}
+    )
+  }}
 
 # Postgres is the default, except if not using internal Postgres server
 matrix_mautrix_discord_database_engine: "{{ 'postgres' if devture_postgres_enabled else 'sqlite' }}"
@@ -1099,12 +1125,22 @@ matrix_mautrix_slack_appservice_token: "{{ '%s' | format(matrix_homeserver_gener
 matrix_mautrix_slack_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_mautrix_slack_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mauslack.hs.tok', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_slack_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_slack_double_puppet_secrets_auto: |-
+  {{
+    {
+      matrix_mautrix_slack_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    }
+    if matrix_appservice_double_puppet_enabled
+    else {}
+  }}
 
 # Postgres is the default, except if not using internal Postgres server
 matrix_mautrix_slack_database_engine: "{{ 'postgres' if devture_postgres_enabled else 'sqlite' }}"
 matrix_mautrix_slack_database_hostname: "{{ devture_postgres_connection_hostname if devture_postgres_enabled else '' }}"
 matrix_mautrix_slack_database_password: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mauslack.db', rounds=655555) | to_uuid }}"
+
+matrix_mautrix_slack_provisioning_shared_secret: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.slack.prov', rounds=655555) | to_uuid }}"
+matrix_mautrix_slack_public_media_signing_key: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.slack.pmed', rounds=655555) | to_uuid }}"
 
 ######################################################################
 #
@@ -1235,7 +1271,16 @@ matrix_mautrix_googlechat_appservice_token: "{{ '%s' | format(matrix_homeserver_
 matrix_mautrix_googlechat_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_mautrix_googlechat_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'gc.hs.token', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_googlechat_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_googlechat_login_shared_secret: |-
+  {{
+    ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    if matrix_appservice_double_puppet_enabled
+    else (
+      matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else ""
+    )
+  }}
 
 matrix_mautrix_googlechat_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1434,7 +1479,14 @@ matrix_mautrix_signal_homeserver_token: "{{ '%s' | format(matrix_homeserver_gene
 
 matrix_mautrix_signal_appservice_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'si.as.token', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_signal_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_signal_double_puppet_secrets_auto: |-
+  {{
+    {
+      matrix_mautrix_signal_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    }
+    if matrix_appservice_double_puppet_enabled
+    else {}
+  }}
 
 matrix_mautrix_signal_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1445,6 +1497,9 @@ matrix_mautrix_signal_metrics_proxying_path_prefix: "{{ matrix_metrics_exposure_
 matrix_mautrix_signal_database_engine: "{{ 'postgres' if devture_postgres_enabled else 'sqlite' }}"
 matrix_mautrix_signal_database_hostname: "{{ devture_postgres_connection_hostname if devture_postgres_enabled else '' }}"
 matrix_mautrix_signal_database_password: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.signal.db', rounds=655555) | to_uuid }}"
+
+matrix_mautrix_signal_provisioning_shared_secret: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.signal.prov', rounds=655555) | to_uuid }}"
+matrix_mautrix_signal_public_media_signing_key: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.signal.pmed', rounds=655555) | to_uuid }}"
 
 ######################################################################
 #
@@ -1498,7 +1553,18 @@ matrix_mautrix_meta_messenger_homeserver_address: "{{ matrix_addons_homeserver_c
 
 matrix_mautrix_meta_messenger_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.meta.fb.hs', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_meta_messenger_bridge_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_meta_messenger_bridge_login_shared_secret_map_auto: |-
+  {{
+    ({
+      matrix_mautrix_meta_messenger_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    })
+    if matrix_appservice_double_puppet_enabled
+    else (
+      {matrix_mautrix_meta_messenger_homeserver_domain: matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret}
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else {}
+    )
+  }}
 
 matrix_mautrix_meta_messenger_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1565,7 +1631,18 @@ matrix_mautrix_meta_instagram_homeserver_address: "{{ matrix_addons_homeserver_c
 
 matrix_mautrix_meta_instagram_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mau.meta.ig.hs', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_meta_instagram_bridge_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_meta_instagram_bridge_login_shared_secret_map_auto: |-
+  {{
+    ({
+      matrix_mautrix_meta_instagram_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    })
+    if matrix_appservice_double_puppet_enabled
+    else (
+      {matrix_mautrix_meta_instagram_homeserver_domain: matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret}
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else {}
+    )
+  }}
 
 matrix_mautrix_meta_instagram_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1639,7 +1716,18 @@ matrix_mautrix_telegram_homeserver_domain: "{{ matrix_domain }}"
 matrix_mautrix_telegram_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_mautrix_telegram_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'telegr.hs.token', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_telegram_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_telegram_bridge_login_shared_secret_map_auto: |-
+  {{
+    ({
+      matrix_mautrix_telegram_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    })
+    if matrix_appservice_double_puppet_enabled
+    else (
+      {matrix_mautrix_telegram_homeserver_domain: matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret}
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else {}
+    )
+  }}
 
 matrix_mautrix_telegram_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1702,7 +1790,18 @@ matrix_mautrix_twitter_appservice_token: "{{ '%s' | format(matrix_homeserver_gen
 matrix_mautrix_twitter_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_mautrix_twitter_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'twt.hs.token', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_twitter_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_twitter_bridge_login_shared_secret_map_auto: |-
+  {{
+    ({
+      matrix_mautrix_twitter_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    })
+    if matrix_appservice_double_puppet_enabled
+    else (
+      {matrix_mautrix_twitter_homeserver_domain: matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret}
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else {}
+    )
+  }}
 
 matrix_mautrix_twitter_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1763,7 +1862,16 @@ matrix_mautrix_gmessages_appservice_token: "{{ '%s' | format(matrix_homeserver_g
 matrix_mautrix_gmessages_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_mautrix_gmessages_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'gmessa.hs.token', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_gmessages_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_gmessages_login_shared_secret: |-
+  {{
+    ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    if matrix_appservice_double_puppet_enabled
+    else (
+      matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else ""
+    )
+  }}
 
 matrix_mautrix_gmessages_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1927,7 +2035,18 @@ matrix_mautrix_whatsapp_appservice_token: "{{ '%s' | format(matrix_homeserver_ge
 matrix_mautrix_whatsapp_homeserver_address: "{{ matrix_addons_homeserver_client_api_url }}"
 matrix_mautrix_whatsapp_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'whats.hs.token', rounds=655555) | to_uuid }}"
 
-matrix_mautrix_whatsapp_login_shared_secret: "{{ matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret if matrix_synapse_ext_password_provider_shared_secret_auth_enabled else '' }}"
+matrix_mautrix_whatsapp_bridge_login_shared_secret_map_auto: |-
+  {{
+    ({
+      matrix_mautrix_whatsapp_homeserver_domain: ("as_token:" + matrix_appservice_double_puppet_registration_as_token)
+    })
+    if matrix_appservice_double_puppet_enabled
+    else (
+      {matrix_mautrix_whatsapp_homeserver_domain: matrix_synapse_ext_password_provider_shared_secret_auth_shared_secret}
+      if matrix_synapse_ext_password_provider_shared_secret_auth_enabled
+      else {}
+    )
+  }}
 
 matrix_mautrix_whatsapp_metrics_enabled: "{{ prometheus_enabled or matrix_metrics_exposure_enabled }}"
 
@@ -1990,6 +2109,8 @@ matrix_sms_bridge_homeserver_token: "{{ '%s' | format(matrix_homeserver_generic_
 # We don't enable bridges by default.
 matrix_heisenbridge_enabled: false
 
+matrix_heisenbridge_scheme: "{{ 'https' if matrix_playbook_ssl_enabled else 'http' }}"
+
 matrix_heisenbridge_systemd_required_services_list_auto: |
   {{
     matrix_addons_homeserver_systemd_services_list
@@ -1999,8 +2120,17 @@ matrix_heisenbridge_container_network: "{{ matrix_addons_container_network }}"
 
 matrix_heisenbridge_container_additional_networks_auto: |-
   {{
-    ([] if matrix_addons_homeserver_container_network == '' else [matrix_addons_homeserver_container_network])
+    (
+      ([] if matrix_addons_homeserver_container_network == '' else [matrix_addons_homeserver_container_network])
+      +
+      [matrix_playbook_reverse_proxyable_services_additional_network] if (matrix_heisenbridge_container_labels_traefik_enabled and matrix_playbook_reverse_proxyable_services_additional_network) else []
+    ) | unique
   }}
+
+matrix_heisenbridge_container_labels_traefik_enabled: "{{ matrix_playbook_reverse_proxy_type in ['playbook-managed-traefik', 'other-traefik-container'] }}"
+matrix_heisenbridge_container_labels_traefik_docker_network: "{{ matrix_playbook_reverse_proxyable_services_additional_network }}"
+matrix_heisenbridge_container_labels_traefik_entrypoints: "{{ devture_traefik_entrypoint_primary }}"
+matrix_heisenbridge_container_labels_traefik_tls_certResolver: "{{ devture_traefik_certResolver_primary }}"
 
 matrix_heisenbridge_appservice_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'heisen.as.tok', rounds=655555) | to_uuid }}"
 
@@ -2847,6 +2977,8 @@ matrix_bot_mjolnir_raw_homeserver_url: "{{ matrix_addons_homeserver_client_api_u
 # We don't enable bots by default.
 matrix_bot_draupnir_enabled: false
 
+matrix_bot_draupnir_container_http_host_bind_port: "{{ (matrix_playbook_service_host_bind_interface_prefix ~ '8769') if matrix_playbook_service_host_bind_interface_prefix else '' }}"
+
 matrix_bot_draupnir_systemd_required_services_list_auto: |
   {{
     matrix_addons_homeserver_systemd_services_list
@@ -2860,11 +2992,24 @@ matrix_bot_draupnir_container_network: "{{ matrix_addons_container_network }}"
 
 matrix_bot_draupnir_container_additional_networks_auto: |-
   {{
-    ([] if matrix_addons_homeserver_container_network == '' else [matrix_addons_homeserver_container_network])
+    (
+      ([] if matrix_addons_homeserver_container_network == '' else
+        [matrix_addons_homeserver_container_network])
+      +
+      ([matrix_playbook_reverse_proxyable_services_additional_network] if
+        (matrix_playbook_reverse_proxyable_services_additional_network and matrix_bot_draupnir_container_labels_traefik_enabled) else [])
+      +
+      ([matrix_pantalaimon_container_network] if (matrix_bot_draupnir_pantalaimon_use and matrix_pantalaimon_container_network != matrix_bot_draupnir_container_network) else [])
+    ) | unique
   }}
 
 matrix_bot_draupnir_homeserver_url: "{{ 'http://matrix-pantalaimon:8009' if matrix_bot_draupnir_pantalaimon_use else matrix_addons_homeserver_client_api_url }}"
 matrix_bot_draupnir_raw_homeserver_url: "{{ matrix_addons_homeserver_client_api_url }}"
+
+matrix_bot_draupnir_container_labels_traefik_enabled: "{{ matrix_bot_draupnir_web_enabled and matrix_playbook_reverse_proxy_type in ['playbook-managed-traefik', 'other-traefik-container'] }}"
+matrix_bot_draupnir_container_labels_traefik_docker_network: "{{ matrix_playbook_reverse_proxyable_services_additional_network }}"
+matrix_bot_draupnir_container_labels_traefik_entrypoints: "{{ devture_traefik_entrypoint_primary }}"
+matrix_bot_draupnir_container_labels_traefik_tls_certResolver: "{{ devture_traefik_certResolver_primary }}"
 
 ######################################################################
 #
@@ -2911,6 +3056,24 @@ matrix_appservice_draupnir_for_all_database_password: "{{ '%s' | format(matrix_h
 ######################################################################
 #
 # /matrix-appservice-draupnir-for-all
+#
+######################################################################
+
+
+######################################################################
+#
+# matrix-appservice-double-puppet
+#
+######################################################################
+
+matrix_appservice_double_puppet_enabled: false
+
+matrix_appservice_double_puppet_registration_as_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'as.doub.pup', rounds=655555) | to_uuid }}"
+matrix_appservice_double_puppet_registration_hs_token: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'hs.doub.pup', rounds=655555) | to_uuid }}"
+
+######################################################################
+#
+# /matrix-appservice-double-puppet
 #
 ######################################################################
 
@@ -3662,6 +3825,15 @@ matrix_media_repo_container_labels_traefik_tls_certResolver: "{{ devture_traefik
 matrix_media_repo_container_labels_traefik_internal_media_enabled: "{{ matrix_playbook_internal_matrix_client_api_traefik_entrypoint_enabled }}"
 matrix_media_repo_container_labels_traefik_internal_media_entrypoints: "{{ matrix_playbook_internal_matrix_client_api_traefik_entrypoint_name }}"
 
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_enabled: "{{ matrix_playbook_internal_matrix_client_api_traefik_entrypoint_enabled }}"
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_entrypoints: "{{ matrix_playbook_internal_matrix_client_api_traefik_entrypoint_name }}"
+
+matrix_media_repo_metrics_proxying_enabled: "{{ matrix_media_repo_metrics_enabled and matrix_metrics_exposure_enabled }}"
+matrix_media_repo_metrics_proxying_hostname: "{{ matrix_metrics_exposure_hostname }}"
+matrix_media_repo_metrics_proxying_path: "{{ matrix_metrics_exposure_path_prefix }}/matrix-media-repo"
+matrix_media_repo_container_labels_traefik_metrics_middleware_basic_auth_enabled: "{{ matrix_metrics_exposure_http_basic_auth_enabled }}"
+matrix_media_repo_container_labels_traefik_metrics_middleware_basic_auth_users: "{{ matrix_metrics_exposure_http_basic_auth_users }}"
+
 matrix_media_repo_database_hostname: "{{ devture_postgres_connection_hostname if devture_postgres_enabled else '' }}"
 matrix_media_repo_database_username: matrix_media_repo
 matrix_media_repo_database_password: "{{ '%s' | format(matrix_homeserver_generic_secret_key) | password_hash('sha512', 'mediarepo.db', rounds=655555) | to_uuid }}"
@@ -3673,6 +3845,11 @@ matrix_media_repo_systemd_required_services_list_auto: |
     +
     ([devture_postgres_identifier ~ '.service'] if devture_postgres_enabled and matrix_media_repo_database_hostname == devture_postgres_connection_hostname else [])
   }}
+
+matrix_media_repo_generate_signing_key: "{{ matrix_homeserver_implementation == 'synapse' or matrix_homeserver_implementation == 'dendrite'}}"
+matrix_media_repo_homeserver_signing_key: "{{ matrix_media_repo_synapse_signing_key if matrix_homeserver_implementation == 'synapse' else (matrix_media_repo_dendrite_signing_key if matrix_homeserver_implementation == 'dendrite' else '') }}"
+matrix_media_repo_synapse_signing_key: "{{ matrix_synapse_config_dir_path }}/{{ matrix_server_fqn_matrix }}.signing.key"
+matrix_media_repo_dendrite_signing_key: "{{ matrix_dendrite_config_dir_path }}/{{ matrix_server_fqn_matrix }}.signing.pem"
 
 # Auto configured server setup by the playbook
 matrix_media_repo_homeservers_auto:
@@ -3694,6 +3871,11 @@ matrix_media_repo_homeservers_auto:
     # admin status. This should be set to one of "synapse", "dendrite", or "matrix". When set
     # to "matrix", most functionality requiring the admin API will not work.
     adminApiKind: "{{ 'synapse' if matrix_homeserver_implementation == 'synapse' else ('dendrite' if matrix_homeserver_implementation == 'dendrite' else 'matrix') }}"
+
+    # The signing key to use for authorizing outbound federation requests. If not specified,
+    # requests will not be authorized. See https://docs.t2bot.io/matrix-media-repo/v1.3.5/installation/signing-key/
+    # for details.
+    signingKeyPath: "{{ '/config/' + matrix_media_repo_identifier + '.signing.key' if matrix_media_repo_generate_signing_key else '' }}"
 
 matrix_media_repo_homeserver_federation_enabled: "{{ matrix_homeserver_federation_enabled }}"
 
@@ -4248,7 +4430,7 @@ matrix_client_element_jitsi_preferred_domain: "{{ matrix_server_fqn_jitsi if jit
 
 matrix_client_hydrogen_enabled: false
 
-matrix_client_hydrogen_container_image_self_build: "{{ matrix_architecture not in ['amd64'] }}"
+matrix_client_hydrogen_container_image_self_build: "{{ matrix_architecture not in ['arm64', 'amd64'] }}"
 
 matrix_client_hydrogen_container_http_host_bind_port: "{{ (matrix_playbook_service_host_bind_interface_prefix ~ '8768') if matrix_playbook_service_host_bind_interface_prefix else '' }}"
 
@@ -4505,6 +4687,10 @@ matrix_synapse_app_service_config_files_auto: "{{ matrix_homeserver_app_service_
 # Disable creation of media repository Synapse worker when using media-repo
 matrix_synapse_ext_media_repo_enabled: "{{ matrix_media_repo_enabled }}"
 
+# Enable Synapse statistics reporting when using synapse-usage-exporter
+matrix_synapse_report_stats: "{{ matrix_synapse_usage_exporter_enabled }}"
+matrix_synapse_report_stats_endpoint: "http://{{ matrix_synapse_usage_exporter_identifier }}:{{ matrix_synapse_usage_exporter_container_port | string }}/report-usage-stats/push"
+
 ######################################################################
 #
 # /matrix-synapse
@@ -4520,6 +4706,11 @@ matrix_synapse_ext_media_repo_enabled: "{{ matrix_media_repo_enabled }}"
 
 # Not enabled by default, for now
 matrix_synapse_auto_compressor_enabled: false
+
+matrix_synapse_auto_compressor_uid: "{{ matrix_user_uid }}"
+matrix_synapse_auto_compressor_gid: "{{ matrix_user_gid }}"
+
+matrix_synapse_auto_compressor_postgres_image: "{{ devture_postgres_container_image_to_use }}"
 
 matrix_synapse_auto_compressor_container_image_self_build: "{{ matrix_architecture not in ['amd64'] }}"
 
@@ -4637,6 +4828,28 @@ matrix_synapse_admin_container_labels_traefik_tls_certResolver: "{{ devture_trae
 #
 ######################################################################
 
+######################################################################
+#
+# matrix-synapse-usage-exporter
+#
+######################################################################
+
+matrix_synapse_usage_exporter_enabled: false
+
+matrix_synapse_usage_exporter_container_network: "{{ matrix_monitoring_container_network }}"
+
+matrix_synapse_usage_exporter_container_additional_networks: "{{ [matrix_playbook_reverse_proxyable_services_additional_network] if matrix_playbook_reverse_proxyable_services_additional_network else [] }}"
+
+matrix_synapse_usage_exporter_container_labels_traefik_enabled: "{{ matrix_synapse_usage_exporter_proxying_enabled }}"
+matrix_synapse_usage_exporter_container_labels_traefik_docker_network: "{{ matrix_playbook_reverse_proxyable_services_additional_network }}"
+matrix_synapse_usage_exporter_container_labels_traefik_entrypoints: "{{ devture_traefik_entrypoint_primary }}"
+matrix_synapse_usage_exporter_container_labels_traefik_tls_certResolver: "{{ devture_traefik_certResolver_primary }}"
+
+######################################################################
+#
+# /matrix-synapse-usage-exporter
+#
+######################################################################
 
 ######################################################################
 #
@@ -4795,6 +5008,8 @@ prometheus_container_additional_networks_auto: |
       ([matrix_prometheus_nginxlog_exporter_container_network] if matrix_prometheus_services_connect_scraper_nginxlog_enabled and matrix_prometheus_nginxlog_exporter_container_network != prometheus_container_network else [])
       +
       ([matrix_media_repo_container_network] if matrix_prometheus_services_connect_scraper_media_repo_enabled and matrix_media_repo_container_network != prometheus_container_network else [])
+      +
+      ([matrix_synapse_usage_exporter_container_network] if matrix_prometheus_services_connect_scraper_synapse_usage_exporter_enabled and matrix_synapse_usage_exporter_container_network != prometheus_container_network else [])
     ) | unique
   }}
 
@@ -4819,6 +5034,8 @@ prometheus_config_scrape_configs_auto: |
     (matrix_prometheus_services_connect_scraper_nginxlog_scrape_configs if matrix_prometheus_services_connect_scraper_nginxlog_enabled else [])
     +
     (matrix_prometheus_services_connect_scraper_media_repo_scrape_configs if matrix_prometheus_services_connect_scraper_media_repo_enabled else [])
+    +
+    (matrix_prometheus_services_connect_scraper_synapse_usage_exporter_scrape_configs if matrix_prometheus_services_connect_scraper_synapse_usage_exporter_enabled else [])
   }}
 
 ######################################################################
@@ -4856,6 +5073,9 @@ matrix_prometheus_services_connect_scraper_nginxlog_static_configs_target: "{{ m
 
 matrix_prometheus_services_connect_scraper_media_repo_enabled: "{{ matrix_media_repo_enabled and matrix_media_repo_metrics_enabled }}"
 matrix_prometheus_services_connect_scraper_media_repo_static_configs_target: "{{ matrix_media_repo_identifier }}:{{ matrix_media_repo_metrics_port }}"
+
+matrix_prometheus_services_connect_scraper_synapse_usage_exporter_enabled: "{{ matrix_synapse_usage_exporter_enabled }}"
+matrix_prometheus_services_connect_scraper_synapse_usage_exporter_static_configs_target: "{{ matrix_synapse_usage_exporter_identifier }}:{{ matrix_synapse_usage_exporter_container_port | string }}"
 
 ######################################################################
 #
@@ -4906,6 +5126,9 @@ grafana_provisioning_datasources: |
       'type': 'prometheus',
       'access': 'proxy',
       'url': ('http://' + prometheus_identifier + ':9090'),
+      'jsonData': {
+        'timeInterval': prometheus_config_global_scrape_interval,
+      }
     }] if prometheus_enabled else [])
   }}
 
@@ -4920,6 +5143,8 @@ grafana_dashboard_download_urls: |
     (matrix_prometheus_nginxlog_exporter_dashboard_urls if matrix_prometheus_nginxlog_exporter_enabled else [])
     +
     (matrix_media_repo_dashboard_urls if matrix_media_repo_metrics_enabled else [])
+    +
+    (matrix_synapse_usage_exporter_dashboard_urls if matrix_synapse_usage_exporter_enabled else [])
   }}
 
 grafana_provisioning_dashboard_template_files: |
@@ -4928,11 +5153,6 @@ grafana_provisioning_dashboard_template_files: |
         'path': 'roles/custom/matrix-prometheus-nginxlog-exporter/templates/grafana/nginx-proxy.json',
         'name': 'nginx-proxy.json',
     }] if matrix_prometheus_nginxlog_exporter_enabled else [])
-    +
-    ([{
-        'path': 'roles/custom/matrix-media-repo/templates/grafana/media-repo.json',
-        'name': 'media-repo.json',
-    }] if matrix_media_repo_metrics_enabled else [])
   }}
 
 grafana_default_home_dashboard_path: |-
