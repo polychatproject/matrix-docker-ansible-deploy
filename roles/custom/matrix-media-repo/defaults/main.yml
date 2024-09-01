@@ -19,7 +19,7 @@ matrix_media_repo_docker_image_path: "t2bot/matrix-media-repo"
 matrix_media_repo_docker_image: "{{ matrix_media_repo_docker_image_name_prefix }}{{ matrix_media_repo_docker_image_path }}:{{ matrix_media_repo_docker_image_tag }}"
 matrix_media_repo_docker_image_name_prefix: "{{ 'localhost/' if matrix_media_repo_container_image_self_build else 'ghcr.io/' }}"
 # renovate: datasource=docker depName=ghcr.io/t2bot/matrix-media-repo
-matrix_media_repo_docker_image_tag: "v1.3.4"
+matrix_media_repo_docker_image_tag: "v1.3.7"
 matrix_media_repo_docker_image_force_pull: "{{ matrix_media_repo_docker_image.endswith(':latest') }}"
 
 matrix_media_repo_base_path: "{{ matrix_base_data_path }}/{{ matrix_media_repo_identifier }}"
@@ -44,6 +44,11 @@ matrix_media_repo_container_network: "{{ matrix_media_repo_identifier }}"
 # Use this to expose this container to another reverse proxy, which runs in a different container network.
 matrix_media_repo_container_additional_networks: []
 
+# Controls whether media repo metrics should be proxied (exposed) on `matrix.DOMAIN/metrics/matrix-media-repo`
+matrix_media_repo_metrics_proxying_enabled: false
+matrix_media_repo_metrics_proxying_hostname: ""
+matrix_media_repo_metrics_proxying_path: "/metrics/matrix-media-repo"
+
 # Controls whether the matrix-media-repo container exposes its HTTP port (tcp/8000 in the container).
 #
 # Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:8000"), or empty string to not expose.
@@ -65,6 +70,9 @@ matrix_media_repo_container_labels_traefik_enabled: true
 matrix_media_repo_container_labels_traefik_docker_network: "{{ matrix_media_repo_container_network }}"
 matrix_media_repo_container_labels_traefik_entrypoints: web-secure
 
+# Traefik labels handling the old `/_matrix/media` endpoints on the Client-API (web-secure) entrypoint.
+# These are being superseded by `/_matrix/client/VERSION/media` endpoints - see `matrix_media_repo_container_labels_traefik_client_matrix_client_media_*`.
+matrix_media_repo_container_labels_traefik_media_enabled: true
 matrix_media_repo_container_labels_traefik_media_path_prefix: "/_matrix/media"
 matrix_media_repo_container_labels_traefik_media_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathPrefix(`{{ matrix_media_repo_container_labels_traefik_media_path_prefix | quote }}`)"
 matrix_media_repo_container_labels_traefik_media_priority: 0
@@ -72,15 +80,37 @@ matrix_media_repo_container_labels_traefik_media_entrypoints: "{{ matrix_media_r
 matrix_media_repo_container_labels_traefik_media_tls: "{{ matrix_media_repo_container_labels_traefik_media_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_media_tls_certResolver: default  # noqa var-naming
 
+# Traefik labels handling the new `/_matrix/client/VERSION/media` endpoints on the Client-API (web-secure) entrypoint.
+# See: https://github.com/matrix-org/matrix-spec-proposals/pull/3916
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_enabled: true
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_path_regexp: "/_matrix/client/(?P<version>(v1))/media"
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathRegexp(`{{ matrix_media_repo_container_labels_traefik_client_matrix_client_media_path_regexp | quote }}`)"
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_priority: 0
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_entrypoints: "{{ matrix_media_repo_container_labels_traefik_entrypoints }}"
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_tls: "{{ matrix_media_repo_container_labels_traefik_client_matrix_client_media_entrypoints != 'web' }}"
+matrix_media_repo_container_labels_traefik_client_matrix_client_media_tls_certResolver: default  # noqa var-naming
+
+# Traefik labels handling the old `/_matrix/media` endpoints on the internal entrypoint.
 # This is like `matrix_media_repo_container_labels_traefik_media_*`, but on an internal Traefik entrypoint.
+# These are being superseded by `/_matrix/client/VERSION/media` endpoints - see `matrix_media_repo_container_labels_traefik_internal_matrix_client_media_*`.
 matrix_media_repo_container_labels_traefik_internal_media_enabled: false
 matrix_media_repo_container_labels_traefik_internal_media_path_prefix: "{{ matrix_media_repo_container_labels_traefik_media_path_prefix }}"
 matrix_media_repo_container_labels_traefik_internal_media_rule: "PathPrefix(`{{ matrix_media_repo_container_labels_traefik_internal_media_path_prefix | quote }}`)"
 matrix_media_repo_container_labels_traefik_internal_media_priority: "{{ matrix_media_repo_container_labels_traefik_media_priority }}"
 matrix_media_repo_container_labels_traefik_internal_media_entrypoints: ""
 
-# /_matrix/client/r0/logout
-# /_matrix/client/r0/logout/all
+# Traefik labels handling the new `/_matrix/client/VERSION/media` endpoints on the internal entrypoint.
+# See: https://github.com/matrix-org/matrix-spec-proposals/pull/3916
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_enabled: false
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_path_regexp: "{{ matrix_media_repo_container_labels_traefik_client_matrix_client_media_path_regexp }}"
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_rule: "PathRegexp(`{{ matrix_media_repo_container_labels_traefik_internal_matrix_client_media_path_regexp | quote }}`)"
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_priority: "{{ matrix_media_repo_container_labels_traefik_client_matrix_client_media_priority }}"
+matrix_media_repo_container_labels_traefik_internal_matrix_client_media_entrypoints: ""
+
+# Traefik labels handling some additional routes on the Client-API (web-secure) entrypoint:
+# - /_matrix/client/r0/logout
+# - /_matrix/client/r0/logout/all
+matrix_media_repo_container_labels_traefik_logout_enabled: true
 matrix_media_repo_container_labels_traefik_logout_path_regexp: "^/_matrix/client/(?P<version>r0|v1|v3|unstable)/(?P<endpoint>logout|logout/all)"
 matrix_media_repo_container_labels_traefik_logout_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathRegexp(`{{ matrix_media_repo_container_labels_traefik_logout_path_regexp }}`)"
 matrix_media_repo_container_labels_traefik_logout_priority: 0
@@ -88,8 +118,10 @@ matrix_media_repo_container_labels_traefik_logout_entrypoints: "{{ matrix_media_
 matrix_media_repo_container_labels_traefik_logout_tls: "{{ matrix_media_repo_container_labels_traefik_logout_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_logout_tls_certResolver: default  # noqa var-naming
 
-# /_matrix/client/r0/admin/purge_media_cache
-# /_matrix/client/r0/admin/quarantine_media/{roomId:[^/]+}
+# Traefik labels handling some additional routes on the Client-API (web-secure) entrypoint:
+# - /_matrix/client/r0/admin/purge_media_cache
+# - /_matrix/client/r0/admin/quarantine_media/{roomId:[^/]+}
+matrix_media_repo_container_labels_traefik_admin_enabled: true
 matrix_media_repo_container_labels_traefik_admin_path_regexp: "^/_matrix/client/(?P<version>(r0|v1|v3|unstable))/admin/(?P<endpoint>(purge_media_cache|quarantine_media/.*))"
 matrix_media_repo_container_labels_traefik_admin_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathRegexp(`{{ matrix_media_repo_container_labels_traefik_admin_path_regexp }}`)"
 matrix_media_repo_container_labels_traefik_admin_priority: 0
@@ -97,6 +129,9 @@ matrix_media_repo_container_labels_traefik_admin_entrypoints: "{{ matrix_media_r
 matrix_media_repo_container_labels_traefik_admin_tls: "{{ matrix_media_repo_container_labels_traefik_admin_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_admin_tls_certResolver: default  # noqa var-naming
 
+# Traefik labels handling some additional routes on the Client-API (web-secure) entrypoint:
+# - /_matrix/client/unstable/io.t2bot.media
+matrix_media_repo_container_labels_traefik_t2bot_enabled: true
 matrix_media_repo_container_labels_traefik_t2bot_path_prefix: "/_matrix/client/unstable/io.t2bot.media"
 matrix_media_repo_container_labels_traefik_t2bot_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathPrefix(`{{ matrix_media_repo_container_labels_traefik_t2bot_path_prefix | quote }}`)"
 matrix_media_repo_container_labels_traefik_t2bot_priority: 0
@@ -104,7 +139,21 @@ matrix_media_repo_container_labels_traefik_t2bot_entrypoints: "{{ matrix_media_r
 matrix_media_repo_container_labels_traefik_t2bot_tls: "{{ matrix_media_repo_container_labels_traefik_t2bot_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_t2bot_tls_certResolver: default  # noqa var-naming
 
-# Traefik federation labels
+# Controls whether labels will be added that expose the media repo metrics endpoint
+matrix_media_repo_container_labels_traefik_metrics_enabled: "{{ matrix_media_repo_metrics_enabled and matrix_media_repo_metrics_proxying_enabled }}"
+matrix_media_repo_container_labels_traefik_metrics_rule: "Host(`{{ matrix_media_repo_metrics_proxying_hostname }}`) && PathPrefix(`{{ matrix_media_repo_metrics_proxying_path }}`)"
+matrix_media_repo_container_labels_traefik_metrics_priority: 0
+matrix_media_repo_container_labels_traefik_metrics_entrypoints: "{{ matrix_media_repo_container_labels_traefik_entrypoints }}"
+matrix_media_repo_container_labels_traefik_metrics_tls: "{{ matrix_media_repo_container_labels_traefik_t2bot_entrypoints != 'web' }}"
+matrix_media_repo_container_labels_traefik_metrics_tls_certResolver: default  # noqa var-naming
+
+matrix_media_repo_container_labels_traefik_metrics_middleware_basic_auth_enabled: false
+# See: https://doc.traefik.io/traefik/middlewares/http/basicauth/#users
+matrix_media_repo_container_labels_traefik_metrics_middleware_basic_auth_users: ''
+
+# Traefik labels handling the old `/_matrix/media` endpoints on the federation entrypint.
+# These are being superseded by `/_matrix/federation/VERSION/media` endpoints - see `matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_*`.
+matrix_media_repo_container_labels_traefik_media_federation_enabled: true
 matrix_media_repo_container_labels_traefik_media_federation_path_prefix: "/_matrix/media"
 matrix_media_repo_container_labels_traefik_media_federation_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathPrefix(`{{ matrix_media_repo_container_labels_traefik_media_path_prefix | quote }}`)"
 matrix_media_repo_container_labels_traefik_media_federation_priority: 0
@@ -112,8 +161,20 @@ matrix_media_repo_container_labels_traefik_media_federation_entrypoints: "{{ mat
 matrix_media_repo_container_labels_traefik_media_federation_tls: "{{ matrix_media_repo_container_labels_traefik_media_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_media_federation_tls_certResolver: default  # noqa var-naming
 
-# /_matrix/client/r0/logout
-# /_matrix/client/r0/logout/all
+# Traefik labels handling the new `/_matrix/federation/VERSION/media` endpoints on the federation entrypint.
+# See: https://github.com/matrix-org/matrix-spec-proposals/pull/3916
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_enabled: true
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_path_regexp: "/_matrix/federation/(?P<version>(v1))/media"
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathRegexp(`{{ matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_path_regexp | quote }}`)"
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_priority: 0
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_entrypoints: "{{ matrix_federation_traefik_entrypoint_name }}"
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_tls: "{{ matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_entrypoints != 'web' }}"
+matrix_media_repo_container_labels_traefik_federation_matrix_federation_media_tls_certResolver: default  # noqa var-naming
+
+# Traefik labels handling some additional routes on the federation entrypoint:
+# - /_matrix/client/r0/logout
+# - /_matrix/client/r0/logout/all
+matrix_media_repo_container_labels_traefik_logout_federation_enabled: true
 matrix_media_repo_container_labels_traefik_logout_federation_path_regexp: "{{ matrix_media_repo_container_labels_traefik_logout_path_regexp }}"
 matrix_media_repo_container_labels_traefik_logout_federation_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathRegexp(`{{ matrix_media_repo_container_labels_traefik_logout_federation_path_regexp }}`)"
 matrix_media_repo_container_labels_traefik_logout_federation_priority: 0
@@ -121,8 +182,10 @@ matrix_media_repo_container_labels_traefik_logout_federation_entrypoints: "{{ ma
 matrix_media_repo_container_labels_traefik_logout_federation_tls: "{{ matrix_media_repo_container_labels_traefik_logout_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_logout_federation_tls_certResolver: default  # noqa var-naming
 
-# /_matrix/client/r0/admin/purge_media_cache
-# /_matrix/client/r0/admin/quarantine_media/{roomId:[^/]+}
+# Traefik labels handling some additional routes on the federation entrypoint:
+# - /_matrix/client/r0/admin/purge_media_cache
+# - /_matrix/client/r0/admin/quarantine_media/{roomId:[^/]+}
+matrix_media_repo_container_labels_traefik_admin_federation_enabled: true
 matrix_media_repo_container_labels_traefik_admin_federation_path_regexp: "{{ matrix_media_repo_container_labels_traefik_admin_path_regexp }}"
 matrix_media_repo_container_labels_traefik_admin_federation_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathRegexp(`{{ matrix_media_repo_container_labels_traefik_admin_federation_path_regexp }}`)"
 matrix_media_repo_container_labels_traefik_admin_federation_priority: 0
@@ -130,6 +193,9 @@ matrix_media_repo_container_labels_traefik_admin_federation_entrypoints: "{{ mat
 matrix_media_repo_container_labels_traefik_admin_federation_tls: "{{ matrix_media_repo_container_labels_traefik_admin_entrypoints != 'web' }}"
 matrix_media_repo_container_labels_traefik_admin_federation_tls_certResolver: default  # noqa var-naming
 
+# Traefik labels handling some additional routes on the federation entrypoint:
+# - /_matrix/client/unstable/io.t2bot.media
+matrix_media_repo_container_labels_traefik_t2bot_federation_enabled: true
 matrix_media_repo_container_labels_traefik_t2bot_federation_path_prefix: "/_matrix/client/unstable/io.t2bot.media"
 matrix_media_repo_container_labels_traefik_t2bot_federation_rule: "Host(`{{ matrix_server_fqn_matrix }}`) && PathPrefix(`{{ matrix_media_repo_container_labels_traefik_t2bot_path_prefix | quote }}`)"
 matrix_media_repo_container_labels_traefik_t2bot_federation_priority: 0
@@ -252,6 +318,14 @@ matrix_media_repo_homeservers: "{{ matrix_media_repo_homeservers_auto + matrix_m
 matrix_media_repo_homeservers_auto: []
 # Additional servers to be managed by MMR
 matrix_media_repo_homeservers_additional: []
+
+# If true, the playbook will generate a signing key when the setup role is invoked.
+# This is adjusted in `group_vars/matrix_servers` depending on the homeserver implementation.
+matrix_media_repo_generate_signing_key: false
+
+# Path where the homeserver signing key is located. Set automatically in
+# `group_vars/matrix_servers` depending on which homeserver is being used.
+matrix_media_repo_homeserver_signing_key: ""
 
 # Options for controlling how access tokens work with the media repo. It is recommended that if
 # you are going to use these options that the `/logout` and `/logout/all` client-server endpoints
@@ -400,6 +474,11 @@ matrix_media_repo_datastore_s3_opts_bucket_name: "your-media-bucket"
 # when `publicBaseUrl` is unset. Defaults to false (cached media will be served by MMR
 # before redirection if present).
 matrix_media_repo_datastore_s3_opts_redirect_when_cached: true
+
+# The size of the prefix (path component) to use when storing media in S3. This can
+# help improve download speeds in some S3 providers. Should not be set to higher than
+# 16 to avoid future incompatibilities with MMR. Defaults to zero (no prefix).
+matrix_media_repo_datastore_s3_opts_prefix_length: 0
 
 # Options for controlling archives. Archives are exports of a particular user's content for
 # the purpose of GDPR or moving media to a different server.
@@ -675,6 +754,31 @@ matrix_media_repo_rate_limit_requests_per_second: 1
 
 # The number of requests an IP can send at once before the rate limit is actually considered.
 matrix_media_repo_rate_limit_burst: 10
+
+# The 'leaky bucket' configurations for MMR. Leaky buckets are limited in size and have a slow
+# drain rate, minimizing the ability for a user to consume large amounts of resources.
+#
+# Buckets are checked and applied after the requests per second configuration above. Buckets are
+# disabled when rate limiting is disabled.
+#
+# Note: buckets are *not* shared across processes. If download requests could end up at two different
+# processes, two different buckets may be filled. This behaviour may change in the future.
+
+# The download bucket applies to both download requests and thumbnail requests. Each anonymous
+# user is assigned a single bucket from their IP address. Authenticated requests (when supported)
+# will use the authenticated entity as the subject - either a user or remote server.
+
+# The maximum size of each bucket.
+matrix_media_repo_rate_limit_buckets_download_capacity_bytes: 524288000  # 500mb default
+
+# The number of bytes to "drain" from the bucket every minute.
+matrix_media_repo_rate_limit_buckets_download_drain_bytes_per_minute: 5242880  # 5mb default
+
+# The number of bytes a requester can go over the capacity, once. This is used to give some
+# buffer to allow a single file to be downloaded when the caller is near the limit. This
+# should be set to either your max remote download size or 30% of the capacityBytes, whichever
+# is smaller.
+matrix_media_repo_rate_limit_buckets_download_overflow_limit_bytes: 104857600  # 100mb default (the same as the default remote download maxBytes)
 
 # Identicons are generated avatars for a given username. Some clients use these to give users a
 # default avatar after signing up. Identicons are not part of the official matrix spec, therefore

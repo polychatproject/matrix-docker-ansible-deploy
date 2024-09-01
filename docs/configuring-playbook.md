@@ -42,6 +42,8 @@ When you're done with all the configuration you'd like to do, continue with [Ins
 
 - [Enabling metrics and graphs (Prometheus, Grafana) for your Matrix server](configuring-playbook-prometheus-grafana.md) (optional)
 
+- [Enabling synapse-usage-exporter for Synapse usage statistics](configuring-playbook-synapse-usage-exporter.md) (optional)
+
 ### Core service adjustments
 
 - Homeserver configuration:
@@ -86,6 +88,8 @@ When you're done with all the configuration you'd like to do, continue with [Ins
 
 
 ### Authentication and user-related
+
+- [Setting up Appservice Double Puppet](configuring-playbook-appservice-double-puppet.md) (optional)
 
 - [Setting up an ma1sd Identity Server](configuring-playbook-ma1sd.md) (optional)
 

@@ -51,6 +51,7 @@
     - galaxy/keydb
     - custom/matrix-corporal
     - custom/matrix-appservice-draupnir-for-all
+    - custom/matrix-appservice-double-puppet
     - custom/matrix-alertmanager-receiver
     - custom/matrix-bridge-appservice-discord
     - custom/matrix-bridge-appservice-slack
@@ -102,6 +103,7 @@
     - custom/matrix-dendrite
     - custom/matrix-conduit
     - custom/matrix-synapse-admin
+    - custom/matrix-synapse-usage-exporter
     - galaxy/prometheus_node_exporter
     - galaxy/prometheus_postgres_exporter
     - custom/matrix-prometheus-nginxlog-exporter

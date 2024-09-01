@@ -9,7 +9,7 @@ matrix_mautrix_whatsapp_container_image_self_build_repo: "https://mau.dev/mautri
 matrix_mautrix_whatsapp_container_image_self_build_branch: "{{ 'master' if matrix_mautrix_whatsapp_version == 'latest' else matrix_mautrix_whatsapp_version }}"
 
 # renovate: datasource=docker depName=dock.mau.dev/mautrix/whatsapp
-matrix_mautrix_whatsapp_version: v0.10.8
+matrix_mautrix_whatsapp_version: v0.10.9
 
 # See: https://mau.dev/mautrix/whatsapp/container_registry
 matrix_mautrix_whatsapp_docker_image: "{{ matrix_mautrix_whatsapp_docker_image_name_prefix }}mautrix/whatsapp:{{ matrix_mautrix_whatsapp_version }}"
@@ -134,10 +134,9 @@ matrix_mautrix_whatsapp_appservice_database_uri: "{{
 	}[matrix_mautrix_whatsapp_database_engine]
 }}"
 
-# Can be set to enable automatic double-puppeting via Shared Secret Auth (https://github.com/devture/matrix-synapse-shared-secret-auth).
-matrix_mautrix_whatsapp_login_shared_secret: ''
-matrix_mautrix_whatsapp_bridge_login_shared_secret_map:
-  "{{ {matrix_mautrix_whatsapp_homeserver_domain: matrix_mautrix_whatsapp_login_shared_secret} if matrix_mautrix_whatsapp_login_shared_secret else {} }}"
+matrix_mautrix_whatsapp_bridge_login_shared_secret_map: "{{ matrix_mautrix_whatsapp_bridge_login_shared_secret_map_auto | combine(matrix_mautrix_whatsapp_bridge_login_shared_secret_map_custom) }}"
+matrix_mautrix_whatsapp_bridge_login_shared_secret_map_auto: {}
+matrix_mautrix_whatsapp_bridge_login_shared_secret_map_custom: {}
 
 # Enable End-to-bridge encryption
 matrix_mautrix_whatsapp_bridge_encryption_allow: "{{ matrix_bridges_encryption_enabled }}"
