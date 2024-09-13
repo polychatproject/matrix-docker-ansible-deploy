@@ -2,12 +2,12 @@
 
 **Note**: email bridging can also happen via the [email2matrix](configuring-playbook-email2matrix.md) bridge supported by the playbook.
 
-The playbook can install and configure [Postmoogle](https://gitlab.com/etke.cc/postmoogle) for you.
+The playbook can install and configure [Postmoogle](https://github.com/etkecc/postmoogle) for you.
 
-It's a bot/bridge you can use to forward emails to Matrix rooms. 
+It's a bot/bridge you can use to forward emails to Matrix rooms.
 Postmoogle runs an SMTP email server and allows you to assign mailbox addresses to Matrix rooms.
 
-See the project's [documentation](https://gitlab.com/etke.cc/postmoogle) to learn what it does and why it might be useful to you.
+See the project's [documentation](https://github.com/etkecc/postmoogle) to learn what it does and why it might be useful to you.
 
 ## Prerequisites
 
@@ -69,19 +69,19 @@ ansible-playbook -i inventory/hosts setup.yml --tags=setup-all,ensure-matrix-use
 
 ## Usage
 
-To use the bot, invite the `@postmoogle:DOMAIN` into a room you want to use as a mailbox.
+To use the bot, invite the `@postmoogle:DOMAIN` bot user into a room you want to use as a mailbox.
 
 Then send `!pm mailbox NAME` to expose this Matrix room as an inbox with the email address `NAME@matrix.domain`. Emails sent to that email address will be forwarded to the room.
 
 Send `!pm help` to the room to see the bot's help menu for additional commands.
 
-You can also refer to the upstream [documentation](https://gitlab.com/etke.cc/postmoogle).
+You can also refer to the upstream [documentation](https://github.com/etkecc/postmoogle).
 
 ### Debug/Logs
 
 As with all other services, you can find their logs in [systemd-journald](https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html) by running something like `journalctl -fu matrix-bot-postmoogle`
 
-The default logging level for this bridge is `INFO`, but you can increase it to `DEBUG` with the following additional configuration: 
+The default logging level for this bridge is `INFO`, but you can increase it to `DEBUG` with the following additional configuration:
 
 ```yaml
 matrix_bot_postmoogle_loglevel: 'DEBUG'
