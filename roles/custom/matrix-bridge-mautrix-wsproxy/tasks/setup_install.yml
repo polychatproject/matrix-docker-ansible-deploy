@@ -62,7 +62,7 @@
     - "{{ matrix_mautrix_wsproxy_base_path }}"
     - "{{ matrix_mautrix_wsproxy_config_path }}"
 
-- name: Check if an old matrix state file exists
+- name: Check if an old Matrix state file exists
   ansible.builtin.stat:
     path: "{{ matrix_mautrix_wsproxy_base_path }}/mx-state.json"
   register: matrix_mautrix_wsproxy_stat_mx_state
@@ -96,6 +96,7 @@
     enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ matrix_mautrix_wsproxy_container_network }}"
     driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
 
 - name: Ensure matrix-mautrix-wsproxy.service installed
   ansible.builtin.template:

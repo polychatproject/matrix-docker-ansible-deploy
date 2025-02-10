@@ -1,7 +1,9 @@
 (Adapted from the [upstream project](https://github.com/element-hq/synapse/blob/develop/docs/CAPTCHA_SETUP.md))
 
 # Overview
+
 Captcha can be enabled for this home server. This file explains how to do that.
+
 The captcha mechanism used is Google's [ReCaptcha](https://www.google.com/recaptcha/). This requires API keys from Google. If your homeserver is Dendrite then [hCapcha](https://www.hcaptcha.com) can be used instead.
 
 ## ReCaptcha
@@ -16,7 +18,7 @@ Must be a reCAPTCHA **v2** key using the "I'm not a robot" Checkbox option
 
 ### Setting ReCaptcha keys
 
-Once registered as above, set the following values:
+Once registered as above, add the following configuration to your `inventory/host_vars/matrix.example.com/vars.yml` file:
 
 ```yaml
 # for Synapse

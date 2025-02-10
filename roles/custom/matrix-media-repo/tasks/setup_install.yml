@@ -89,7 +89,7 @@
         cmd: |
           {{ devture_systemd_docker_base_host_command_docker }} run
           --rm
-          --name={{ matrix_media_repo_identifier }}
+          --name={{ matrix_media_repo_identifier }}-temp
           --user={{ matrix_synapse_uid }}:{{ matrix_synapse_gid }}
           --cap-drop=ALL
           --mount type=bind,src={{ matrix_media_repo_config_path }},dst=/config
@@ -104,7 +104,7 @@
         cmd: |
           {{ devture_systemd_docker_base_host_command_docker }} run
           --rm
-          --name={{ matrix_media_repo_identifier }}
+          --name={{ matrix_media_repo_identifier }}-temp
           --user={{ matrix_synapse_uid }}:{{ matrix_synapse_gid }}
           --cap-drop=ALL
           --mount type=bind,src={{ matrix_media_repo_config_path }},dst=/config
@@ -139,6 +139,7 @@
     enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ matrix_media_repo_container_network }}"
     driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
 
 - name: Ensure media-repo service installed
   ansible.builtin.template:

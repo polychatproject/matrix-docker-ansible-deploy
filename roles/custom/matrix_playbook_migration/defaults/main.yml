@@ -18,6 +18,12 @@ matrix_playbook_migration_matrix_ntfy_migration_validation_enabled: true
 # Controls if (`matrix_redis` -> `redis`) validation will run.
 matrix_playbook_migration_matrix_redis_migration_validation_enabled: true
 
+# Controls if (`redis` -> `valkey`) validation will run.
+matrix_playbook_migration_redis_valkey_migration_validation_enabled: true
+
+# Controls if (`keydb` -> `valkey`) validation will run.
+matrix_playbook_migration_keydb_valkey_migration_validation_enabled: true
+
 # Controls if (`matrix_etherpad` -> `etherpad`) validation will run.
 matrix_playbook_migration_matrix_etherpad_migration_validation_enabled: true
 
@@ -26,6 +32,9 @@ matrix_playbook_migration_matrix_aux_migration_validation_enabled: true
 
 # Controls if (`matrix_jitsi` -> `jitsi`) validation will run.
 matrix_playbook_migration_matrix_jitsi_migration_validation_enabled: true
+
+# Controls if (`matrix_bot_postmoogle_` -> `matrix_postmoogle_`) validation will run.
+matrix_playbook_migration_matrix_postmoogle_migration_validation_enabled: true
 
 # Controls if the old apt repository (likely without a `signed-by` option) on Debian-based systems will be removed.
 #

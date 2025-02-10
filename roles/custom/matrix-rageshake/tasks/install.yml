@@ -19,7 +19,7 @@
 - name: Ensure rageshake config file created
   ansible.builtin.copy:
     content: "{{ matrix_rageshake_configuration | to_nice_yaml(indent=2, width=999999) }}"
-    dest: "{{ matrix_rageshake_config_path }}/config.yml"
+    dest: "{{ matrix_rageshake_config_path }}/config.yaml"
     owner: "{{ matrix_user_username }}"
     group: "{{ matrix_user_groupname }}"
     mode: 0640
@@ -70,6 +70,7 @@
     enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ matrix_rageshake_container_network }}"
     driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
 
 - name: Ensure matrix-rageshake.service installed
   ansible.builtin.template:

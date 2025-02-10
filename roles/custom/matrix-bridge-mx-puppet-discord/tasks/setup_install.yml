@@ -47,10 +47,10 @@
     - when: "matrix_mx_puppet_discord_sqlite_database_path_local_stat_result.stat.exists | bool"
       block:
         - ansible.builtin.include_role:
-            name: galaxy/com.devture.ansible.role.postgres
+            name: galaxy/postgres
             tasks_from: migrate_db_to_postgres
           vars:
-            devture_postgres_db_migration_request:
+            postgres_db_migration_request:
               src: "{{ matrix_mx_puppet_discord_sqlite_database_path_local }}"
               dst: "{{ matrix_mx_puppet_discord_database_connection_string }}"
               caller: "{{ role_path | basename }}"
@@ -117,6 +117,7 @@
     enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ matrix_mx_puppet_discord_container_network }}"
     driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
 
 - name: Ensure matrix-mx-puppet-discord.service installed
   ansible.builtin.template:

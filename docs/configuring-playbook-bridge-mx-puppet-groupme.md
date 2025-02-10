@@ -1,24 +1,37 @@
-# Setting up MX Puppet GroupMe (optional)
+# Setting up MX Puppet GroupMe bridging (optional)
 
-The playbook can install and configure
-[mx-puppet-groupme](https://gitlab.com/xangelix-pub/matrix/mx-puppet-groupme) for you.
+The playbook can install and configure [mx-puppet-groupme](https://gitlab.com/xangelix-pub/matrix/mx-puppet-groupme) for you.
 
-See the project page to learn what it does and why it might be useful to you.
+See the project's [documentation](https://gitlab.com/xangelix-pub/matrix/mx-puppet-groupme/blob/master/README.md) to learn what it does and why it might be useful to you.
 
-To enable the [GroupMe](https://groupme.com/) bridge just use the following
-playbook configuration:
+## Adjusting the playbook configuration
 
+To enable the [GroupMe](https://groupme.com/) bridge, add the following configuration to your `inventory/host_vars/matrix.example.com/vars.yml` file:
 
 ```yaml
 matrix_mx_puppet_groupme_enabled: true
 ```
 
+## Installing
+
+After configuring the playbook, run it with [playbook tags](playbook-tags.md) as below:
+
+<!-- NOTE: let this conservative command run (instead of install-all) to make it clear that failure of the command means something is clearly broken. -->
+```sh
+ansible-playbook -i inventory/hosts setup.yml --tags=setup-all,ensure-matrix-users-created,start
+```
+
+**Notes**:
+
+- The `ensure-matrix-users-created` playbook tag makes the playbook automatically create the bot's user account.
+
+- The shortcut commands with the [`just` program](just.md) are also available: `just install-all` or `just setup-all`
+
+  `just install-all` is useful for maintaining your setup quickly ([2x-5x faster](../CHANGELOG.md#2x-5x-performance-improvements-in-playbook-runtime) than `just setup-all`) when its components remain unchanged. If you adjust your `vars.yml` to remove other components, you'd need to run `just setup-all`, or these components will still remain installed.
 
 ## Usage
 
-Once the bot is enabled you need to start a chat with `GroupMe Puppet Bridge` with
-the handle `@_groupmepuppet_bot:YOUR_DOMAIN` (where `YOUR_DOMAIN` is your base
-domain, not the `matrix.` domain).
+To use the bridge, you need to start a chat with `GroupMe Puppet Bridge` with the handle `@_groupmepuppet_bot:example.com` (where `example.com` is your base domain, not the `matrix.` domain).
 
 One authentication method is available.
 
@@ -30,7 +43,6 @@ link <access token>
 
 Once logged in, send `listrooms` to the bot user to list the available rooms.
 
-Clicking rooms in the list will result in you receiving an invitation to the
-bridged room.
+Clicking rooms in the list will result in you receiving an invitation to the bridged room.
 
-Also send `help` to the bot to see the commands available.
+Send `help` to the bot to see the available commands.
