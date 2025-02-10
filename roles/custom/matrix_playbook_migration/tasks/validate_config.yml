@@ -36,8 +36,8 @@
     - {'old': 'matrix_systemd_services_autostart_enabled', 'new': 'devture_systemd_service_manager_services_autostart_enabled'}
     - {'old': 'matrix_prometheus_node_exporter_metrics_proxying_enabled', 'new': '<prometheus_node_exporter_container_labels_traefik_enabled or matrix_metrics_exposure_enabled>'}
     - {'old': 'matrix_prometheus_postgres_exporter_metrics_proxying_enabled', 'new': '<prometheus_postgres_exporter_container_labels_traefik_enabled or matrix_metrics_exposure_enabled>'}
-    - {'old': 'matrix_playbook_traefik_certs_dumper_role_enabled', 'new': 'devture_traefik_certs_dumper_enabled'}
-    - {'old': 'matrix_playbook_traefik_role_enabled', 'new': 'devture_traefik_enabled'}
+    - {'old': 'matrix_playbook_traefik_certs_dumper_role_enabled', 'new': 'traefik_certs_dumper_enabled'}
+    - {'old': 'matrix_playbook_traefik_role_enabled', 'new': 'traefik_enabled'}
 
     # Most important variables from the old Prometheus role here, for people who miss the changelog entry
     - {'old': 'matrix_prometheus_enabled', 'new': 'prometheus_enabled'}
@@ -56,6 +56,7 @@
     - {'old': 'matrix_prometheus_scraper_hookshot_targets', 'new': '<superseded by matrix_prometheus_services_connect_scraper_hookshot_static_configs_target>'}
     - {'old': 'matrix_prometheus_scraper_nginxlog_enabled', 'new': 'matrix_prometheus_services_connect_scraper_nginxlog_enabled'}
     - {'old': 'matrix_prometheus_scraper_nginxlog_server_port', 'new': 'matrix_prometheus_services_connect_scraper_nginxlog_static_configs_target'}
+
     - {'old': 'matrix_prosody_jitsi_max_participants', 'new': 'jitsi_prosody_max_participants'}
     - {'old': 'jitsi_require_well_known', 'new': 'jitsi_web_well_known_element_jitsi_enabled'}
     - {'old': 'jitsi_wellknown_element_jitsi_json', 'new': 'jitsi_web_well_known_element_jitsi_json'}
@@ -63,16 +64,19 @@
     - {'old': 'exim_relay_docker_image_name_prefix', 'new': 'exim_relay_container_image_name_prefix'}
     - {'old': 'exim_relay_docker_image_force_pull', 'new': 'exim_relay_container_image_force_pull'}
 
+    - {'old': 'matrix_playbook_reverse_proxy_traefik_middleware_compession_enabled', 'new': 'matrix_playbook_reverse_proxy_traefik_middleware_compression_enabled'}
+    - {'old': 'matrix_playbook_reverse_proxy_traefik_middleware_compession_name', 'new': 'matrix_playbook_reverse_proxy_traefik_middleware_compression_name'}
+
 - name: (Deprecation) Catch and report matrix_postgres variables
   ansible.builtin.fail:
     msg: |-
-      The matrix-postgres role in the playbook has been replaced with the com.devture.ansible.role.postgres role (https://github.com/devture/com.devture.ansible.role.postgres).
+      The matrix-postgres role in the playbook has been replaced with the ansible-role-postgres role (https://github.com/mother-of-all-self-hosting/ansible-role-postgres).
       The new role is pretty much the same, but uses differently named variables.
 
-      The matrix-postgres-backup role in the playbook has been replaced with the com.devture.ansible.role.postgres_backup role (https://github.com/devture/com.devture.ansible.role.postgres_backup).
+      The matrix-postgres-backup role in the playbook has been replaced with the ansible-role-postgres-backup role (https://github.com/mother-of-all-self-hosting/ansible-role-postgres-backup).
       The new role is pretty much the same, but uses differently named variables.
 
-      Please change your configuration (vars.yml) to rename all `matrix_postgres`-prefixed variables (`matrix_postgres_*` -> `devture_postgres_*`).
+      Please change your configuration (vars.yml) to rename all `matrix_postgres`-prefixed variables (`matrix_postgres_*` -> `postgres_*`).
 
       The following variables in your configuration need to be renamed: {{ vars | dict2items | selectattr('key', 'match', 'matrix_postgres_.*') | map (attribute='key') | join(', ') }}
   when: "vars | dict2items | selectattr('key', 'match', 'matrix_postgres_.*') | list | items2dict"
@@ -178,6 +182,34 @@
           We found usage of the following variables: {{ matrix_playbook_migration_redis_migration_vars.keys() | join(', ') }}
       when: "matrix_playbook_migration_redis_migration_vars | length > 0"
 
+- when: matrix_playbook_migration_redis_valkey_migration_validation_enabled | bool
+  block:
+    - ansible.builtin.set_fact:
+        matrix_playbook_migration_redis_migration_vars: |-
+          {{ vars | dict2items | selectattr('key', 'match', 'redis_.*') | list | items2dict }}
+
+    - name: (Deprecation) Catch and report matrix_redis variables
+      ansible.builtin.fail:
+        msg: >-
+          The Redis role that used to be part of this playbook has been superseded by https://github.com/mother-of-all-self-hosting/ansible-role-valkey.
+          Please change your configuration (vars.yml) to rename all variables (`redis_` -> `valkey_`).
+          We found usage of the following variables: {{ matrix_playbook_migration_redis_migration_vars.keys() | join(', ') }}
+      when: "matrix_playbook_migration_redis_migration_vars | length > 0"
+
+- when: matrix_playbook_migration_keydb_valkey_migration_validation_enabled | bool
+  block:
+    - ansible.builtin.set_fact:
+        matrix_playbook_migration_keydb_migration_vars: |-
+          {{ vars | dict2items | selectattr('key', 'match', 'keydb_.*') | list | items2dict }}
+
+    - name: (Deprecation) Catch and report matrix_redis variables
+      ansible.builtin.fail:
+        msg: >-
+          The KeyDB role that used to be part of this playbook has been superseded by https://github.com/mother-of-all-self-hosting/ansible-role-valkey.
+          Please change your configuration (vars.yml) to rename all variables (`keydb_` -> `valkey_`).
+          We found usage of the following variables: {{ matrix_playbook_migration_keydb_migration_vars.keys() | join(', ') }}
+      when: "matrix_playbook_migration_keydb_migration_vars | length > 0"
+
 - when: matrix_playbook_migration_matrix_etherpad_migration_validation_enabled | bool
   block:
     - ansible.builtin.set_fact:
@@ -223,6 +255,20 @@
           We found usage of the following variables: {{ matrix_playbook_migration_jitsi_migration_vars.keys() | join(', ') }}
       when: "matrix_playbook_migration_jitsi_migration_vars | length > 0"
 
+- when: matrix_playbook_migration_matrix_postmoogle_migration_validation_enabled | bool
+  block:
+    - ansible.builtin.set_fact:
+        matrix_playbook_migration_postmoogle_migration_vars: |-
+          {{ vars | dict2items | selectattr('key', 'match', 'matrix_bot_postmoogle_.*') | list | items2dict }}
+
+    - name: (Deprecation) Catch and report matrix_bot_postmoogle variables
+      ansible.builtin.fail:
+        msg: >-
+          Your configuration contains a variable, which now has a different name.
+          Please change your configuration (vars.yml) to rename all variables (`matrix_bot_postmoogle_` -> `matrix_postmoogle_`).
+          We found usage of the following variables: {{ matrix_playbook_migration_postmoogle_migration_vars.keys() | join(', ') }}
+      when: "matrix_playbook_migration_postmoogle_migration_vars | length > 0"
+
 - when: matrix_playbook_migration_matrix_nginx_proxy_elimination_variable_transition_checks_enabled | bool
   block:
     - name: (Deprecation) Catch and report transitioned playbook settings during the matrix-nginx-proxy elimination
@@ -258,8 +304,8 @@
         - {'old': 'matrix_nginx_proxy_base_domain_homepage_enabled', 'new': 'matrix_static_files_file_index_html_enabled'}
         - {'old': 'matrix_nginx_proxy_base_domain_homepage_template', 'new': 'matrix_static_files_file_index_html_template'}
         - {'old': 'matrix_nginx_proxy_base_domain_create_directory', 'new': '<no longer necessary; see matrix_static_files_file_index_html_enabled>'}
-        - {'old': 'matrix_nginx_proxy_proxy_riot_compat_redirect_enabled', 'new': '<redirecting the riot domain to an element domain is no longer supported - you can implement it yourself using matrix_client_element_container_labels_additional_labels>'}
-        - {'old': 'matrix_nginx_proxy_proxy_riot_compat_redirect_hostname', 'new': '<redirecting the riot domain to an element domain is no longer supported - you can implement it yourself using matrix_client_element_container_labels_additional_labels>'}
+        - {'old': 'matrix_nginx_proxy_proxy_riot_compat_redirect_enabled', 'new': '<redirecting the Riot domain to an Element domain is no longer supported - you can implement it yourself using matrix_client_element_container_labels_additional_labels>'}
+        - {'old': 'matrix_nginx_proxy_proxy_riot_compat_redirect_hostname', 'new': '<redirecting the Riot domain to an Element domain is no longer supported - you can implement it yourself using matrix_client_element_container_labels_additional_labels>'}
         - {'old': 'matrix_nginx_proxy_proxy_matrix_client_redirect_enabled', 'new': '<superseded by matrix_synapse_container_labels_public_client_root_redirection_enabled or other equivalent variables based on the homeserver implementation you use>'}
         - {'old': 'matrix_nginx_proxy_proxy_matrix_client_redirect_root_uri_to_domain', 'new': '<superseded by matrix_synapse_container_labels_public_client_root_redirection_url or other equivalent variables based on the homeserver implementation you use>'}
         - {'old': 'matrix_nginx_proxy_proxy_matrix_client_api_forwarded_location_synapse_client_api_enabled', 'new': 'matrix_synapse_container_labels_public_client_synapse_client_api_enabled'}
@@ -300,7 +346,7 @@
         - {'old': 'matrix_nginx_proxy_proxy_synapse_federation_api_addr_sans_container', 'new': '<removed>'}
         - {'old': 'matrix_nginx_proxy_proxy_synapse_additional_server_configuration_blocks', 'new': '<removed>'}
         - {'old': 'matrix_nginx_proxy_proxy_matrix_additional_server_configuration_blocks', 'new': '<removed>'}
-        - {'old': 'matrix_nginx_proxy_access_log_enabled', 'new': 'devture_traefik_config_accessLog_enabled'}
+        - {'old': 'matrix_nginx_proxy_access_log_enabled', 'new': 'traefik_config_accessLog_enabled'}
         - {'old': 'matrix_nginx_proxy_container_labels_traefik_proxy_matrix_federation_hostname', 'new': 'matrix_server_fqn_matrix_federation'}
         - {'old': 'etherpad_nginx_proxy_dimension_integration_enabled', 'new': '<removed>'}
         - {'old': 'etherpad_nginx_proxy_dimension_integration_path_prefix', 'new': '<removed>'}
@@ -310,7 +356,7 @@
         - {'old': 'matrix_prometheus_services_proxy_connect_prometheus_postgres_exporter_matrix_nginx_proxy_not_enabled_proxy_pass_host', 'new': '<removed>'}
         - {'old': 'matrix_docker_network', 'new': '<removed in favor of various other variables - matrix_addons_container_network, matrix_monitoring_container_network, matrix_homeserver_container_network, etc.>'}
         - {'old': 'matrix_playbook_ssl_retrieval_method', 'new': '<removed; see docs/configuring-playbook-ssl-certificates.md for alternatives>'}
-        - {'old': 'matrix_ssl_lets_encrypt_support_email', 'new': 'devture_traefik_config_certificatesResolvers_acme_email'}
+        - {'old': 'matrix_ssl_lets_encrypt_support_email', 'new': 'traefik_config_certificatesResolvers_acme_email'}
         - {'old': 'matrix_federation_traefik_entrypoint', 'new': 'matrix_federation_traefik_entrypoint_name'}
 
 - when: matrix_playbook_migration_matrix_nginx_proxy_leftover_variable_validation_checks_enabled | bool
@@ -362,3 +408,60 @@
         msg: >-
           We found usage of the following variables which are now removed: {{ matrix_playbook_migration_matrix_synapse_reverse_proxy_companion_container_labels_public_client_synapse_oidc_vars.keys() | join(', ') }}
       when: "matrix_playbook_migration_matrix_synapse_reverse_proxy_companion_container_labels_public_client_synapse_oidc_vars | length > 0"
+
+- name: (Deprecation) Catch and report devture_postgres_backup variables
+  ansible.builtin.fail:
+    msg: |-
+      The postgres-backup role in the playbook now lives under the MASH organization (https://github.com/mother-of-all-self-hosting/ansible-role-postgres-backup).
+      The new role is pretty much the same, but uses differently named variables.
+
+      Please change your configuration (vars.yml) to rename all `devture_postgres_backup_`-prefixed variables (`devture_postgres_backup_*` -> `postgres_backup_*`).
+
+      The following variables in your configuration need to be renamed: {{ vars | dict2items | selectattr('key', 'match', 'devture_postgres_backup_.*') | map (attribute='key') | join(', ') }}
+  when: "vars | dict2items | selectattr('key', 'match', 'devture_postgres_backup_.*') | list | items2dict"
+
+- name: (Deprecation) Catch and report devture_postgres variables
+  ansible.builtin.fail:
+    msg: |-
+      The postgres role in the playbook now lives under the MASH organization (https://github.com/mother-of-all-self-hosting/ansible-role-postgres).
+      The new role is pretty much the same, but uses differently named variables.
+
+      Please change your configuration (vars.yml) to rename all `devture_postgres_`-prefixed variables (`devture_postgres_*` -> `postgres_*`).
+
+      The following variables in your configuration need to be renamed: {{ vars | dict2items | selectattr('key', 'match', 'devture_postgres_.*') | map (attribute='key') | join(', ') }}
+  when: "vars | dict2items | selectattr('key', 'match', 'devture_postgres_.*') | list | items2dict"
+
+- name: (Deprecation) Catch and report traefik_certs_dumper variables
+  ansible.builtin.fail:
+    msg: |-
+      The traefik-certs-dumper role in the playbook now lives under the MASH organization (https://github.com/mother-of-all-self-hosting/ansible-role-traefik-certs-dumper).
+      The new role is pretty much the same, but uses differently named variables.
+
+      Please change your configuration (vars.yml) to rename all `devture_traefik_certs_dumper_`-prefixed variables (`devture_traefik_certs_dumper_*` -> `traefik_certs_dumper_*`).
+
+      The following variables in your configuration need to be renamed: {{ vars | dict2items | selectattr('key', 'match', 'devture_traefik_certs_dumper_.*') | map (attribute='key') | join(', ') }}
+  when: "vars | dict2items | selectattr('key', 'match', 'devture_traefik_certs_dumper_.*') | list | items2dict"
+
+- name: (Deprecation) Catch and report devture_traefik variables
+  ansible.builtin.fail:
+    msg: |-
+      The traefik role in the playbook now lives under the MASH organization (https://github.com/mother-of-all-self-hosting/ansible-role-traefik).
+      The new role is pretty much the same, but uses differently named variables.
+
+      Please change your configuration (vars.yml) to rename all `devture_traefik_`-prefixed variables (`devture_traefik_*` -> `traefik_*`).
+
+      The following variables in your configuration need to be renamed: {{ vars | dict2items | selectattr('key', 'match', 'devture_traefik_.*') | map (attribute='key') | join(', ') }}
+  when: "vars | dict2items | selectattr('key', 'match', 'devture_traefik_.*') | list | items2dict"
+
+- name: (Deprecation) Catch and report mautrix-hangouts variables
+  ansible.builtin.fail:
+    msg: |-
+      The Google Hangouts service was discontinued on 1st of November 2022.
+      The mautrix-hangouts bridge has been deprecated in the playbook since December 2024 and was completely removed from the playbook in February 2025.
+
+      Please change your configuration (`vars.yml`) to remove all `matrix_mautrix_hangouts_*` variables.
+
+      You may also wish to uninstall the bridge manually. See `docs/configuring-playbook-bridge-mautrix-hangouts.md` for more information.
+
+      The following variables in your configuration need to be removed: {{ vars | dict2items | selectattr('key', 'match', 'matrix_mautrix_hangouts_.*') | map (attribute='key') | join(', ') }}
+  when: "vars | dict2items | selectattr('key', 'match', 'matrix_mautrix_hangouts_.*') | list | items2dict"

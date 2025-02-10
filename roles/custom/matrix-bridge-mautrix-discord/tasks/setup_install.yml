@@ -13,10 +13,10 @@
     - when: "matrix_mautrix_discord_sqlite_database_path_local_stat_result.stat.exists | bool"
       block:
         - ansible.builtin.include_role:
-            name: galaxy/com.devture.ansible.role.postgres
+            name: galaxy/postgres
             tasks_from: migrate_db_to_postgres
           vars:
-            devture_postgres_db_migration_request:
+            postgres_db_migration_request:
               src: "{{ matrix_mautrix_discord_sqlite_database_path_local }}"
               dst: "{{ matrix_mautrix_discord_database_connection_string }}"
               caller: "{{ role_path | basename }}"
@@ -92,6 +92,16 @@
     mode: 0644
     owner: "{{ matrix_user_username }}"
     group: "{{ matrix_user_groupname }}"
+
+- name: Ensure mautrix-discord support files installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ matrix_mautrix_discord_base_path }}/{{ item }}"
+    mode: 0640
+    owner: "{{ matrix_user_username }}"
+    group: "{{ matrix_user_groupname }}"
+  with_items:
+    - labels
 
 - name: Ensure mautrix-discord container network is created
   community.general.docker_network:

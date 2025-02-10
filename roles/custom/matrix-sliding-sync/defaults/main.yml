@@ -1,6 +1,6 @@
 ---
 
-# Sliding Sync Proxy is an implementation of MSC3575 for the new sliding sync
+# Sliding Sync proxy is an implementation of MSC3575 for the new sliding sync
 # Project source code URL: https://github.com/matrix-org/sliding-sync
 
 matrix_sliding_sync_enabled: true
@@ -43,7 +43,7 @@ matrix_sliding_sync_container_additional_networks: []
 matrix_sliding_sync_metrics_enabled: false
 matrix_sliding_sync_metrics_port: 2112
 
-# Controls whether Sliding Sync metrics should be proxied (exposed) on `matrix.DOMAIN/metrics/sliding-sync`
+# Controls whether Sliding Sync metrics should be proxied (exposed) on `matrix.example.com/metrics/sliding-sync`
 matrix_sliding_sync_metrics_proxying_enabled: false
 matrix_sliding_sync_metrics_proxying_hostname: ''
 matrix_sliding_sync_metrics_proxying_path: /metrics/sliding-sync
@@ -93,13 +93,13 @@ matrix_sliding_sync_container_labels_additional_labels: ''
 # A list of extra arguments to pass to the container
 matrix_sliding_sync_container_extra_arguments: []
 
-# List of systemd services that matrix-sliding-sync-proxy.service depends on
+# List of systemd services that matrix-sliding-sync.service depends on
 matrix_sliding_sync_systemd_required_services_list: "{{ matrix_sliding_sync_systemd_required_services_list_default + matrix_sliding_sync_systemd_required_services_list_auto + matrix_sliding_sync_systemd_required_services_list_custom }}"
 matrix_sliding_sync_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 matrix_sliding_sync_systemd_required_services_list_auto: []
 matrix_sliding_sync_systemd_required_services_list_custom: []
 
-# List of systemd services that matrix-sliding-sync-proxy.service wants
+# List of systemd services that matrix-sliding-sync.service wants
 matrix_sliding_sync_systemd_wanted_services_list: []
 
 # Controls the SYNCV3_SERVER environment variable

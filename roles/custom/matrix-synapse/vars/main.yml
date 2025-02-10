@@ -8,7 +8,7 @@ matrix_synapse_media_store_directory_name: "{{ matrix_synapse_media_store_path |
 # Optionally: `false` to fully disable tls on outbound smtp
 matrix_synapse_email_smtp_enable_tls: true
 
-# Room workers handle any URL that contains a room id, either through the client-server API or the federation API
+# Room workers handle any URL that contains a room ID, either through the client-server API or the federation API
 # - see https://tcpipuk.github.io/synapse/deployment/nginx.html#locationsconf
 matrix_synapse_workers_room_worker_client_server_endpoints:
   - ^/_matrix/client/.*?!(?<room>[A-Za-z0-9._=\-\/]+):[A-Za-z0-9.\-]+
@@ -246,7 +246,7 @@ matrix_synapse_workers_media_repository_endpoints:
   - ^/_matrix/client/v1/media/
   - ^/_matrix/federation/v1/media/
 
-  # ... and the following regular expressions matching media-specific administration APIs:
+  # … and the following regular expressions matching media-specific administration APIs:
 
   - ^/_synapse/admin/v1/purge_media_cache$
   - ^/_synapse/admin/v1/room/.*/media.*$

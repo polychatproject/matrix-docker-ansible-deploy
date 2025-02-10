@@ -3,14 +3,12 @@
 This document shows you how to perform various maintenance tasks related to the Synapse chat server.
 
 Table of contents:
-
 - [Purging old data with the Purge History API](#purging-old-data-with-the-purge-history-api), for when you wish to delete in-use (but old) data from the Synapse database
-
 - [Compressing state with rust-synapse-compress-state](#compressing-state-with-rust-synapse-compress-state)
-
 - [Browse and manipulate the database](#browse-and-manipulate-the-database), for when you really need to take matters into your own hands
-
 - [Make Synapse faster](#make-synapse-faster)
+
+💡 See this page for details about configuring Synapse: [Configuring Synapse](configuring-playbook-synapse.md)
 
 ## Purging old data with the Purge History API
 
@@ -18,12 +16,14 @@ You can use the **[Purge History API](https://github.com/element-hq/synapse/blob
 
 To make use of this Synapse Admin API, **you'll need an admin access token** first. Refer to the documentation on [how to obtain an access token](obtaining-access-tokens.md).
 
+> [!WARNING]
+> Access tokens are sensitive information. Do not include them in any bug reports, messages, or logs. Do not share the access token with anyone.
+
 Synapse's Admin API is not exposed to the internet by default, following [official Synapse reverse-proxying recommendations](https://github.com/element-hq/synapse/blob/master/docs/reverse_proxy.md#synapse-administration-endpoints). To expose it you will need to add `matrix_synapse_container_labels_public_client_synapse_admin_api_enabled: true` to your `vars.yml` file.
 
 Follow the [Purge History API](https://github.com/element-hq/synapse/blob/master/docs/admin_api/purge_history_api.md) documentation page for the actual purging instructions.
 
 After deleting data, you may wish to run a [`FULL` Postgres `VACUUM`](./maintenance-postgres.md#vacuuming-postgresql).
-
 
 ## Compressing state with rust-synapse-compress-state
 
@@ -35,15 +35,15 @@ After deleting data, you may wish to run a [`FULL` Postgres `VACUUM`](./maintena
 
 To ask the playbook to run rust-synapse-compress-state, execute:
 
-```
+```sh
 ansible-playbook -i inventory/hosts setup.yml --tags=rust-synapse-compress-state
 ```
 
-By default, all rooms with more than `100000` state group rows will be compressed.
-If you need to adjust this, pass: `--extra-vars='matrix_synapse_rust_synapse_compress_state_min_state_groups_required=SOME_NUMBER_HERE'` to the command above.
+The shortcut command with `just` program is also available: `just run-tags rust-synapse-compress-state`
+
+By default, all rooms with more than `100000` state group rows will be compressed. If you need to adjust this, pass: `--extra-vars='matrix_synapse_rust_synapse_compress_state_min_state_groups_required=SOME_NUMBER_HERE'` to the command above.
 
 After state compression, you may wish to run a [`FULL` Postgres `VACUUM`](./maintenance-postgres.md#vacuuming-postgresql).
-
 
 ## Browse and manipulate the database
 
@@ -51,22 +51,22 @@ When the [Synapse Admin API](https://github.com/element-hq/synapse/tree/master/d
 
 Editing the database manually is not recommended or supported by the Synapse developers. If you are going to do so you should [make a database backup](./maintenance-postgres.md#backing-up-postgresql).
 
-First, set up an SSH tunnel to your matrix server (skip if it is your local machine):
+First, set up an SSH tunnel to your Matrix server (skip if it is your local machine):
 
-```
+```sh
 # you may replace 1799 with an arbitrary port unbound on both machines
-ssh -L 1799:localhost:1799 matrix.DOMAIN
+ssh -L 1799:localhost:1799 matrix.example.com
 ```
 
 Then start up an ephemeral [adminer](https://www.adminer.org/) container on the Matrix server, connecting it to the `matrix` network and linking the postgresql container:
 
-```
+```sh
 docker run --rm --publish 1799:8080 --link matrix-postgres --net matrix adminer
 ```
 
 You should then be able to browse the adminer database administration GUI at http://localhost:1799/ after entering your DB credentials (found in the `host_vars` or on the server in `{{matrix_synapse_config_dir_path}}/homeserver.yaml` under `database.args`)
 
-⚠️ Be **very careful** with this, there is **no undo** for impromptu DB operations.
+⚠️️ Be **very careful** with this, there is **no undo** for impromptu DB operations.
 
 ## Make Synapse faster
 
@@ -86,15 +86,15 @@ Tuning the cache factor is useful only to a limited degree (as its crude to do i
 
 Cache autotuning is **enabled by default** and controlled via the following variables:
 
-- `matrix_synapse_cache_autotuning_max_cache_memory_usage` - defaults to 1/8 of total RAM with a cap of 2GB; values are specified in bytes
-- `matrix_synapse_cache_autotuning_target_cache_memory_usage` - defaults to 1/16 of total RAM with a cap of 1GB; values are specified in bytes
-- `matrix_synapse_cache_autotuning_min_cache_ttl` - defaults to `30s`
+- `matrix_synapse_cache_autotuning_max_cache_memory_usage` — defaults to 1/8 of total RAM with a cap of 2GB; values are specified in bytes
+- `matrix_synapse_cache_autotuning_target_cache_memory_usage` — defaults to 1/16 of total RAM with a cap of 1GB; values are specified in bytes
+- `matrix_synapse_cache_autotuning_min_cache_ttl` — defaults to `30s`
 
 You can **learn more about cache-autotuning and the global cache factor settings** in the [Synapse's documentation on caches and associated values](https://matrix-org.github.io/synapse/latest/usage/configuration/config_documentation.html#caches-and-associated-values).
 
 To **disable cache auto-tuning**, unset all values:
 
-```yml
+```yaml
 matrix_synapse_cache_autotuning_max_cache_memory_usage: ''
 matrix_synapse_cache_autotuning_target_cache_memory_usage: ''
 matrix_synapse_cache_autotuning_min_cache_ttl: ''
